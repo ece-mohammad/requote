@@ -190,8 +190,8 @@ def get_parser() -> argparse.ArgumentParser:
         help="""Input pythopn files to requote, can be a single file, 
         or multiple files. Default: reads from stdin""",
         type=str,
-        nargs="*",
-        default=["-"],
+        nargs='*',
+        default=['-'],
     )
     # output
     out: argparse._MutuallyExclusiveGroup = parser.add_mutually_exclusive_group()
@@ -208,7 +208,7 @@ def get_parser() -> argparse.ArgumentParser:
         "--output",
         help="file to write the output. Default: write to stdout",
         type=str,
-        default="-",
+        default='-',
     )
     # style
     style: argparse._MutuallyExclusiveGroup = parser.add_mutually_exclusive_group()
@@ -217,7 +217,7 @@ def get_parser() -> argparse.ArgumentParser:
         "--style",
         choices=tuple(Styles.keys()),
         default="black",
-        help="quoting style to use",
+        help="quoting style to use. Default: black",
     )
     style.add_argument(
         "-c",
@@ -236,9 +236,9 @@ def split_quotes(string: str) -> t.Tuple[str, str, str]:
     supported_quotes = tuple(i.value for i in QuoteChar)
 
     if leader not in supported_quotes:
-        return ("", string, "")
+        return ('', string, '')
 
-    quotes = "".join(list(takewhile(lambda x: x == leader, string)))
+    quotes = ''.join(list(takewhile(lambda x: x == leader, string)))
 
     n_quotes = len(quotes)
     return quotes, string[n_quotes:-n_quotes], quotes
@@ -273,7 +273,7 @@ def requote_code(code: str, style: QuoteStyle) -> str:
                     requoted = quote_string(string, QuoteChar.DOUBLE_QUOTE, 3)
 
                 elif len(l_quote) == 2:
-                    requoted = quote_string("", style.single_char, 1)
+                    requoted = quote_string('', style.single_char, 1)
 
                 elif (
                     len(l_quote) == 1
@@ -285,7 +285,7 @@ def requote_code(code: str, style: QuoteStyle) -> str:
                 elif (
                     len(l_quote) == 1
                     and len(string) == 2
-                    and string[0] == "\\"
+                    and string[0] == '\\'
                     and style.single_char.value not in string
                 ):
                     requoted = quote_string(string, style.single_char, 1)
@@ -324,7 +324,7 @@ def load_conf(conf_file: str) -> QuoteStyle:
 
     style_file: Path = Path(conf_file)
 
-    with open(style_file, "r") as f:
+    with open(style_file, 'r') as f:
         conf: str = f.read()
 
     style_dict = loaders[style_file.suffix](conf)
@@ -356,7 +356,7 @@ def get_style(name: str, conf_file: str) -> QuoteStyle:
 
 def read_stdin() -> str:
     """Read code from stdin"""
-    code = ""
+    code = ''
     while line := sys.stdin.readline():
         code += line
     return code
@@ -372,11 +372,11 @@ def main():
     style: QuoteStyle = get_style(args.style, args.conf)
 
     # stdin
-    if "-" in args.files:
+    if '-' in args.files:
         code: str = read_stdin()
         content: str = requote_code(code, style)
 
-        out: str = "-" if args.inplace else out
+        out: str = '-' if args.inplace else out
         results[out] = content
 
         args.files.clear()
@@ -404,18 +404,18 @@ def main():
             results[f] = content
 
         else:
-            results[out] = results.get(out, "") + "\n" + content
+            results[out] = results.get(out, '') + '\n' + content
 
     # write results
     for f, res in results.items():
-        if f == "-":
+        if f == '-':
             outfile = sys.stdout
         else:
-            outfile = open(f, "w")
+            outfile = open(f, 'w')
 
         outfile.write(res)
 
-        if f != "-":
+        if f != '-':
             outfile.close()
 
 

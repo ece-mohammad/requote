@@ -12,13 +12,14 @@ from requote import (
 )
 
 
-# test quoting quoting 
+# test quoting quoting
 
 # test split quotes
 
+
 # test requoting
-class TestRequoteCode:
-    ...
+class TestRequoteCode: ...
+
 
 # test configuration parsing
 
