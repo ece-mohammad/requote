@@ -1,7 +1,5 @@
 #!/usr/bin.env python3
 # -*- coding: utf-8 -*-
-
-
 """
 A utility script that unifies string quotes in python files
 according to specified style.
@@ -50,23 +48,21 @@ be consistent.
 
 """
 
-
 import argparse
-from collections import defaultdict
-from io import BytesIO
-import tokenize
-from pathlib import Path
-import sys
-from dataclasses import dataclass
-import typing as t
 import enum
-from itertools import takewhile
-import tomllib
-import yaml
 import json
+import sys
+import tokenize
+import tomllib
+import typing as t
+from dataclasses import dataclass
+from io import BytesIO
+from itertools import takewhile
+from pathlib import Path
 
 
-class ValidationError(Exception): ...
+class ValidationError(Exception):
+    ...
 
 
 class QuoteChar(enum.Enum):
@@ -131,8 +127,8 @@ class QuoteStyle:
         # validate keys
         if "single_char" not in style.keys() or "string" not in style.keys():
             raise ValidationError(
-                f"style doesn't have all keys required for a quoting style:" f"{style}"
-            )
+                f"style doesn't have all keys required for a quoting style:"
+                f"{style}")
 
         # validate quote chars values
         single_char = style["single_char"]
@@ -140,8 +136,7 @@ class QuoteStyle:
         quote_chars = [q for q in QuoteChar]
         if single_char not in quote_chars or string not in quote_chars:
             raise ValidationError(
-                f"style has invalid values for quoting style: {style}"
-            )
+                f"style has invalid values for quoting style: {style}")
 
     @staticmethod
     def from_dict(style: t.Dict[str, str]) -> "QuoteStyle":
@@ -164,7 +159,10 @@ class QuoteStyle:
 
     def to_dict(self) -> t.Dict[str, str]:
         """Convert quote style object into a dictionary"""
-        return {"single_char": self.single_char.value, "string": self.string.value}
+        return {
+            "single_char": self.single_char.value,
+            "string": self.string.value
+        }
 
     def __str__(self):
         return f"single_char: {self.single_char}, string: {self.string}"
@@ -172,12 +170,12 @@ class QuoteStyle:
 
 # default styles
 Styles: t.Final[t.Dict[str, QuoteStyle]] = {
-    "black": QuoteStyle(
-        single_char=QuoteChar.DOUBLE_QUOTE, string=QuoteChar.DOUBLE_QUOTE
-    ),
-    "c_style": QuoteStyle(
-        single_char=QuoteChar.SINGLE_QUOTE, string=QuoteChar.DOUBLE_QUOTE
-    ),
+    "black":
+    QuoteStyle(single_char=QuoteChar.DOUBLE_QUOTE,
+               string=QuoteChar.DOUBLE_QUOTE),
+    "c_style":
+    QuoteStyle(single_char=QuoteChar.SINGLE_QUOTE,
+               string=QuoteChar.DOUBLE_QUOTE),
 }
 
 
@@ -187,14 +185,14 @@ def get_parser() -> argparse.ArgumentParser:
     # input
     parser.add_argument(
         "files",
-        help="""Input pythopn files to requote, can be a single file, 
+        help="""Input pythopn files to requote, can be a single file,
         or multiple files. Default: reads from stdin""",
         type=str,
         nargs='*',
         default=['-'],
     )
     # output
-    out: argparse._MutuallyExclusiveGroup = parser.add_mutually_exclusive_group()
+    out = parser.add_mutually_exclusive_group()
     out.add_argument(
         "-i",
         "--inplace",
@@ -211,7 +209,7 @@ def get_parser() -> argparse.ArgumentParser:
         default='-',
     )
     # style
-    style: argparse._MutuallyExclusiveGroup = parser.add_mutually_exclusive_group()
+    style = parser.add_mutually_exclusive_group()
     style.add_argument(
         "-s",
         "--style",
@@ -223,7 +221,7 @@ def get_parser() -> argparse.ArgumentParser:
         "-c",
         "--conf",
         type=str,
-        help="""path to a {yaml,json,toml} configuration file 
+        help="""path to a {json,toml} configuration file
         that contains custom style settings""",
     )
     return parser
@@ -275,26 +273,17 @@ def requote_code(code: str, style: QuoteStyle) -> str:
                 elif len(l_quote) == 2:
                     requoted = quote_string('', style.single_char, 1)
 
-                elif (
-                    len(l_quote) == 1
-                    and len(string) < 2
-                    and style.single_char.value not in string
-                ):
+                elif (len(l_quote) == 1 and len(string) < 2
+                      and style.single_char.value not in string):
                     requoted = quote_string(string, style.single_char, 1)
 
-                elif (
-                    len(l_quote) == 1
-                    and len(string) == 2
-                    and string[0] == '\\'
-                    and style.single_char.value not in string
-                ):
+                elif (len(l_quote) == 1 and len(string) == 2
+                      and string[0] == '\\'
+                      and style.single_char.value not in string):
                     requoted = quote_string(string, style.single_char, 1)
 
-                elif (
-                    len(l_quote) == 1
-                    and len(string)
-                    and style.string.value not in string
-                ):
+                elif (len(l_quote) == 1 and len(string)
+                      and style.string.value not in string):
                     requoted = quote_string(string, style.string, 1)
 
                 else:
@@ -310,17 +299,13 @@ def json_loader(json_str: str) -> t.Dict[str, str]:
     return json.loads(json_str)
 
 
-def yaml_loader(yaml_str: str) -> t.Dict[str, str]:
-    return yaml.load(yaml_str, yaml.Loader)
-
-
 def toml_loader(toml_str: str) -> t.Dict[str, str]:
     return tomllib.loads(toml_str)
 
 
 def load_conf(conf_file: str) -> QuoteStyle:
     """Load quoting style from given conf file"""
-    loaders = {".json": json_loader, ".yaml": yaml_loader, ".toml": toml_loader}
+    loaders = {".json": json_loader, "toml": toml_loader}
 
     style_file: Path = Path(conf_file)
 
@@ -344,7 +329,8 @@ def get_style(name: str, conf_file: str) -> QuoteStyle:
         style: QuoteStyle = load_conf(conf_file)
 
     except (ValidationError, KeyError):
-        print(f"Invalid style in given conf file: {conf_file}", file=sys.stderr)
+        print(f"Invalid style in given conf file: {conf_file}",
+              file=sys.stderr)
         sys.exit(1)
 
     except Exception:
@@ -392,7 +378,8 @@ def main():
             sys.exit(1)
 
         if src_file.suffix != ".py":
-            print(f"given file is not a python file: {src_file}", file=sys.stderr)
+            print(f"given file is not a python file: {src_file}",
+                  file=sys.stderr)
             sys.exit(1)
 
         with open(src_file) as src:
