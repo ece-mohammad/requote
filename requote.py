@@ -77,7 +77,7 @@ class QuoteStyle:
     single_char: QuoteChar = QuoteChar.SINGLE_QUOTE
     string: QuoteChar = QuoteChar.DOUBLE_QUOTE
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.validate(self.to_dict())
 
     @staticmethod
@@ -176,7 +176,7 @@ class QuoteStyle:
             "string": self.string.value,
         }
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"single_char: {self.single_char}, string: {self.string}"
 
 
@@ -332,19 +332,25 @@ def requote_code(code: str, style: QuoteStyle) -> str:
 
     with BytesIO(code.encode("utf-8")) as f:
         tokens = tokenize.tokenize(f.readline)
-        res = []
+        new_tokens = []
         for tok in tokens:
             tok_num, tok_val, *_ = tok
             if tok_num == tokenize.STRING:
                 requoted = requote_string_token(tok_val, style)
-                res.append((tok_num, requoted, *_))
+                new_tokens.append((tok_num, requoted, *_))
             else:
-                res.append((tok_num, tok_val, *_))
-    return tokenize.untokenize(res).decode("utf-8")
+                new_tokens.append((tok_num, tok_val, *_))
+    res: str | t.Any = tokenize.untokenize(new_tokens)
+
+    if isinstance(res, bytes):
+        return res.decode("utf-8")
+
+    return res
 
 
 def json_loader(json_str: str) -> t.Dict[str, str]:
-    return json.loads(json_str)
+    res: t.Dict[str, str] = dict(json.loads(json_str))
+    return res
 
 
 def toml_loader(toml_str: str) -> t.Dict[str, str]:
@@ -362,7 +368,7 @@ def load_conf(conf_file: str) -> QuoteStyle:
         conf: str = f.read()
 
     style_dict = loaders[style_file.suffix](conf)
-    style = QuoteStyle(style_dict)
+    style = QuoteStyle.from_dict(style_dict)
     return style
 
 
@@ -389,7 +395,7 @@ def get_style(name: str, conf_file: str) -> QuoteStyle:
     return style
 
 
-def main():
+def main() -> None:
     parser = get_parser()
     args = parser.parse_args()
     out = args.output
@@ -403,8 +409,8 @@ def main():
         code: str = sys.stdin.read()
         content: str = requote_code(code, style)
 
-        out: str = '-' if args.inplace else out
-        results[out] = content
+        f_name: str = '-' if args.inplace else out
+        results[f_name] = content
 
         args.files.clear()
 
