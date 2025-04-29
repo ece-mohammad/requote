@@ -23,5 +23,9 @@
     "titleBar.border": "#40a0a0",
     "titleBar.inactiveBackground": "#40a0a099",
     "titleBar.inactiveForeground": "#15202b99"
-  }
+  },
+  "cSpell.words": [
+    "requote",
+    "requoted"
+  ]
 }

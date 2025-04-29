@@ -26,17 +26,17 @@ while pep8 didn't recommend a specific style for quotes:
     however, use the other one to avoid backslashes in the string.
     It improves readability.
 
-except for triple quoted string:
-
-    > For triple-quoted strings, always use double quote characters
-    to be consistent with the docstring convention in PEP 257.
-
-To make the tool as flexible as possible, a style has 2 options:
+To make the tool as flexible as possible, a style has 3 options:
     1. single character string: single or double quotes.
     2. single line strings: single or double quotes.
+    3. triple_quoted: single or double triple quotes (should be double
+        quotes according to pep8)
 
-Quotes everywhere else (like comments) are not changed, and
-strings that contain the same quote character.
+Quotes aren't changed for:
+    - anywhere outside a string literals like comments
+    - strings that contain the same quote character as the surrounding quotes
+    - f-strings
+
 
 Please, note that it's not recommended to mix single and double
 strings usage. But if you like a specific quoting style,
@@ -76,6 +76,7 @@ class QuoteChar(enum.Enum):
 class QuoteStyle:
     single_char: QuoteChar = QuoteChar.SINGLE_QUOTE
     string: QuoteChar = QuoteChar.DOUBLE_QUOTE
+    triple_quoted: QuoteChar = QuoteChar.DOUBLE_QUOTE
 
     def __post_init__(self) -> None:
         self.validate(self.to_dict())
@@ -95,6 +96,7 @@ class QuoteStyle:
                 {
                     "single_char": "'",
                     "string": "'",
+                    "triple_quoted: '"',
                 }
             )
             >>> True
@@ -104,14 +106,14 @@ class QuoteStyle:
                     "single_char": QuoteChar."'",
                 }
             )
-            >>> False
+            >>> ValidationError
 
             validate_quoting_style(
                 {
                     "string": QuoteChar."'",
                 }
             )
-            >>> False
+            >>> ValidationError
 
             validate_quoting_style(
                 {
@@ -119,7 +121,8 @@ class QuoteStyle:
                     "string": "'",
                 }
             )
-            >>> False
+            >>> ValidationError
+
         :type style: Dict[str, str]
         :raises ValidationError: if the style dictionary doesn't satisfy the
         validation criteria
@@ -133,11 +136,16 @@ class QuoteStyle:
             raise ValidationError(f"Missing 'string' key from style: "
                                   f"{style}")
 
+        if "triple_quoted" not in style.keys():
+            raise ValidationError(f"Missing 'triple_quoted' key from style: "
+                                  f"{style}")
+
         # validate quote chars values
         quote_enums = {q for q in QuoteChar}
         quote_chars = {q.value for q in QuoteChar}
         single_char = style["single_char"]
         string = style["string"]
+        triple_quoted = style["triple_quoted"]
 
         if (isinstance(single_char, str) and single_char
                 not in quote_chars) or (isinstance(single_char, QuoteChar)
@@ -147,6 +155,12 @@ class QuoteStyle:
 
         if (isinstance(string, str) and string not in quote_chars) or (
                 isinstance(string, QuoteChar) and string not in quote_enums):
+            raise ValidationError(
+                f"style has invalid values for string quotes: {style}")
+
+        if (isinstance(triple_quoted, str) and triple_quoted
+                not in quote_chars) or (isinstance(triple_quoted, QuoteChar)
+                                        and triple_quoted not in quote_enums):
             raise ValidationError(
                 f"style has invalid values for string quotes: {style}")
 
@@ -167,6 +181,7 @@ class QuoteStyle:
         return QuoteStyle(
             single_char=QuoteChar(style["single_char"]),
             string=QuoteChar(style["string"]),
+            triple_quoted=QuoteChar(style["triple_quoted"]),
         )
 
     def to_dict(self) -> t.Dict[str, str]:
@@ -174,10 +189,12 @@ class QuoteStyle:
         return {
             "single_char": self.single_char.value,
             "string": self.string.value,
+            "triple_quoted": self.triple_quoted.value,
         }
 
     def __str__(self) -> str:
-        return f"single_char: {self.single_char}, string: {self.string}"
+        return f"single_char: {self.single_char}, string: {self.string}, "\
+               f"triple_quoted: {self.triple_quoted}"
 
 
 # default styles
@@ -186,11 +203,13 @@ Styles: t.Final[t.Dict[str, QuoteStyle]] = {
     QuoteStyle(
         single_char=QuoteChar.DOUBLE_QUOTE,
         string=QuoteChar.DOUBLE_QUOTE,
+        triple_quoted=QuoteChar.DOUBLE_QUOTE,
     ),
     "c_style":
     QuoteStyle(
         single_char=QuoteChar.SINGLE_QUOTE,
         string=QuoteChar.DOUBLE_QUOTE,
+        triple_quoted=QuoteChar.DOUBLE_QUOTE,
     ),
 }
 
@@ -303,7 +322,7 @@ def requote_code(code: str, style: QuoteStyle) -> str:
 
         # triple quoted string, follows normal string rules
         if len(l_quote) == 3:
-            requoted = quote_string(string, style.string, 3)
+            requoted = quote_string(string, style.triple_quoted, 3)
 
         # empty string literal '' or ""
         elif len(l_quote) == 2:
@@ -320,8 +339,8 @@ def requote_code(code: str, style: QuoteStyle) -> str:
             requoted = quote_string(string, style.single_char, 1)
 
         # other string literals like "abc"
-        elif (len(l_quote) == 1 and len(string)
-              and style.string.value not in string):
+        elif len(l_quote) == 1 and len(
+                string) and style.string.value not in string:
             requoted = quote_string(string, style.string, 1)
 
         else:
