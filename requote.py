@@ -85,44 +85,44 @@ class QuoteStyle:
     def validate(style: t.Dict[str, str]) -> None:
         """Validates a style dictionary.
 
+        Examples:
+
+            >>> validate_quoting_style(
+            ...     {
+            ...         "single_char": "'",
+            ...         "string": "'",
+            ...         "triple_quoted: '"',
+            ...     }
+            ... )
+
+            >>> validate_quoting_style(
+            ...     {
+            ...         "single_char": QuoteChar."'",
+            ...     }
+            ... )
+            >>> ValidationError
+
+            >>> validate_quoting_style(
+            ...     {
+            ...         "string": QuoteChar."'",
+            ...     }
+            ... )
+            >>> ValidationError
+
+            >>> validate_quoting_style(
+            ...     {
+            ...         "single_char": "(",
+            ...         "string": "'",
+            ...     }
+            ... )
+            >>> ValidationError
+
         :param style: a quoting style dictionary that contains the
-        quote characters for different strings. A style if valid iff it
-        satisfies the following conditions:
-            1. contains the keys: single_char and string.
-            2. the values for both of them are either
-            a single quote or a double quote character.
-        example:
-            validate_quoting_style(
-                {
-                    "single_char": "'",
-                    "string": "'",
-                    "triple_quoted: '"',
-                }
-            )
-            >>> True
-
-            validate_quoting_style(
-                {
-                    "single_char": QuoteChar."'",
-                }
-            )
-            >>> ValidationError
-
-            validate_quoting_style(
-                {
-                    "string": QuoteChar."'",
-                }
-            )
-            >>> ValidationError
-
-            validate_quoting_style(
-                {
-                    "single_char": "(",
-                    "string": "'",
-                }
-            )
-            >>> ValidationError
-
+            quote characters for different strings. A style if valid iff it
+            satisfies the following conditions
+                1. contains the keys: single_char and string.
+                2. the values for both of them are either
+                a single quote or a double quote character.
         :type style: Dict[str, str]
         :raises ValidationError: if the style dictionary doesn't satisfy the
         validation criteria
