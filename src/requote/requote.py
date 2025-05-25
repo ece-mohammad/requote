@@ -224,21 +224,21 @@ class QuoteStyle:
         }
 
     def __str__(self) -> str:
-        return (f"single_char: {self.single_char.value}, "
-                f"string: {self.string.value}, "
-                f"triple_quoted: {self.triple_quoted.value}")
+        return (
+            f"single_char: {self.single_char.value}, "
+            f"string: {self.string.value}, "
+            f"triple_quoted: {self.triple_quoted.value}"
+        )
 
 
 # default styles
 STYLES: t.Final[t.Dict[str, QuoteStyle]] = {
-    "black":
-    QuoteStyle(
+    "black": QuoteStyle(
         single_char=QuoteChar.DOUBLE_QUOTE,
         string=QuoteChar.DOUBLE_QUOTE,
         triple_quoted=QuoteChar.DOUBLE_QUOTE,
     ),
-    "c_style":
-    QuoteStyle(
+    "c_style": QuoteStyle(
         single_char=QuoteChar.SINGLE_QUOTE,
         string=QuoteChar.DOUBLE_QUOTE,
         triple_quoted=QuoteChar.DOUBLE_QUOTE,
@@ -462,8 +462,9 @@ def get_style(name: str, conf_file: str) -> QuoteStyle:
         style: QuoteStyle = load_conf(conf_file)
 
     except ValidationError:
-        print(f"Invalid style in given conf file: {conf_file}",
-              file=sys.stderr)
+        print(
+            f"Invalid style in given conf file: {conf_file}", file=sys.stderr
+        )
         sys.exit(1)
 
     return style
@@ -500,8 +501,9 @@ def main() -> None:
             sys.exit(1)
 
         if src_file.suffix != ".py":
-            print(f"given file is not a python file: {src_file}",
-                  file=sys.stderr)
+            print(
+                f"given file is not a python file: {src_file}", file=sys.stderr
+            )
             sys.exit(1)
 
         with open(src_file, "r", encoding="utf-8") as src:
@@ -518,11 +520,12 @@ def main() -> None:
 
     # write results
     for f, res in results.items():
+        concat = "\n".join(res)
         if f == "-":
-            print(res)
+            print(concat)
         else:
             with open(f, "w", encoding="utf-8") as outfile:
-                outfile.write("\n".join(res))
+                outfile.write(concat)
 
 
 if __name__ == "__main__":

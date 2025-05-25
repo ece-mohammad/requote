@@ -17,9 +17,9 @@ repos:
 
 -   repo: local
     hooks:
-    -   id: yapf
-        name: yapf
-        entry: yapf -i
+    -   id: ruff format
+        name: ruff format
+        entry: ruff format
         language: python
         types:
         -   python
