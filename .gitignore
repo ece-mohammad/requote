@@ -10,3 +10,7 @@ wheels/
 .venv
 foo.*
 
+.todo
+.coverage
+coverage.lcov
+lcov.info

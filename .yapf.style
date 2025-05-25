@@ -337,11 +337,11 @@ split_before_dot=False
 
 # Split after the opening paren which surrounds an expression if it doesn't
 # fit on a single line.
-split_before_expression_after_opening_paren=False
+split_before_expression_after_opening_paren=True
 
 # If an argument / parameter list is going to be split, then split before
 # the first argument.
-split_before_first_argument=False
+split_before_first_argument=True
 
 # Set to True to prefer splitting before 'and' or 'or' rather than
 # after.
@@ -406,7 +406,7 @@ split_penalty_for_added_line_split=30
 split_penalty_import_names=0
 
 # The penalty of splitting the line around the 'and' and 'or' operators.
-split_penalty_logical_operator=300
+split_penalty_logical_operator=0
 
 # Use the Tab character for indentation.
 use_tabs=False
