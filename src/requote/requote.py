@@ -1,4 +1,4 @@
-#!/usr/bin.env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 
@@ -54,12 +54,13 @@ import tomllib
 import typing as t
 from dataclasses import dataclass
 from io import BytesIO
-from itertools import takewhile
 from pathlib import Path
+
+__version__ = "1.0.0"
 
 
 class ValidationError(Exception):
-    ...
+    """Quote style validation error"""
 
 
 class QuoteChar(enum.Enum):
@@ -71,9 +72,51 @@ class QuoteChar(enum.Enum):
     SINGLE_QUOTE = "'"
     DOUBLE_QUOTE = '"'
 
+    @property
+    def escaped(self) -> str:
+        """Get quote char as an escaped string"""
+        return f"\\{self.value}"
+
+    @property
+    def other(self) -> "QuoteChar":
+        """Return other quote char"""
+        if self == QuoteChar.SINGLE_QUOTE:
+            return QuoteChar.DOUBLE_QUOTE
+        return QuoteChar.SINGLE_QUOTE
+
 
 @dataclass()
 class QuoteStyle:
+    """A data class that represents a quoting style.
+
+    It has the following variables:
+    - single_char: quote character for single character and empty strings
+    - string: quote character for strings
+    - triple_quoted: quote character for triple quoted strings
+
+    Default values for quote style:
+    - single_char: single quote `'`
+    - string: double quote `"`
+    - triple_quoted: double quote `"`
+
+    Each of the variables must be either a singe quote `'`, or a double quote
+    character `"`, or an enum of `QuoteChar`.
+
+    static methods:
+    - validate(style: t.Dict[str, str]) -> None: validates a quote style dict
+    - _is_valid_quote(quote: str | QuoteChar) -> bool: a helper function that
+    checks that given quote is a valid quote
+    -
+
+    class methods:
+    - from_dict(style: t.Dict[str, str]) -> QuoteStyle: returns a QuoteStyle
+    object from given quote style dict
+
+    methods:
+    - to_dict() -> Dict[str, str]: returns a dict representation of a quote
+    style object
+    """
+
     single_char: QuoteChar = QuoteChar.SINGLE_QUOTE
     string: QuoteChar = QuoteChar.DOUBLE_QUOTE
     triple_quoted: QuoteChar = QuoteChar.DOUBLE_QUOTE
@@ -82,12 +125,21 @@ class QuoteStyle:
         self.validate(self.to_dict())
 
     @staticmethod
+    def _is_valid_quote(quote: str | QuoteChar) -> bool:
+        """Check that give quote is a valid quote char"""
+        try:
+            QuoteChar(quote)
+        except ValueError:
+            return False
+        return True
+
+    @staticmethod
     def validate(style: t.Dict[str, str]) -> None:
         """Validates a style dictionary.
 
         Examples:
 
-            >>> validate_quoting_style(
+            >>> QuoteStyle.validate(
             ...     {
             ...         "single_char": "'",
             ...         "string": "'",
@@ -95,21 +147,21 @@ class QuoteStyle:
             ...     }
             ... )
 
-            >>> validate_quoting_style(
+            >>> QuoteStyle.validate(
             ...     {
             ...         "single_char": QuoteChar."'",
             ...     }
             ... )
             >>> ValidationError
 
-            >>> validate_quoting_style(
+            >>> QuoteStyle.validate(
             ...     {
             ...         "string": QuoteChar."'",
             ...     }
             ... )
             >>> ValidationError
 
-            >>> validate_quoting_style(
+            >>> QuoteStyle.validate(
             ...     {
             ...         "single_char": "(",
             ...         "string": "'",
@@ -125,47 +177,25 @@ class QuoteStyle:
                 a single quote or a double quote character.
         :type style: Dict[str, str]
         :raises ValidationError: if the style dictionary doesn't satisfy the
-        validation criteria
+        validation criteria:
+        1. style dict doesn't contain all style keys {"single_char", "string",
+            "triple_quoted"}
+        2. all style values are valid quote chars QuoteChar.SINGLE_QUOTE or
         """
         # validate keys
-        if "single_char" not in style.keys():
-            raise ValidationError(f"Missing 'single_char' key from style: "
-                                  f"{style}")
+        required_keys = {"single_char", "string", "triple_quoted"}
+        missing_keys = required_keys - style.keys()
+        if missing_keys:
+            raise ValidationError(f"Missing keys in style: {style}")
 
-        if "string" not in style.keys():
-            raise ValidationError(f"Missing 'string' key from style: "
-                                  f"{style}")
+        # validate values
+        for key in required_keys:
+            quote = style[key]
+            if not QuoteStyle._is_valid_quote(quote):
+                raise ValidationError(f"Invalid quote char for {key}: {quote}")
 
-        if "triple_quoted" not in style.keys():
-            raise ValidationError(f"Missing 'triple_quoted' key from style: "
-                                  f"{style}")
-
-        # validate quote chars values
-        quote_enums = {q for q in QuoteChar}
-        quote_chars = {q.value for q in QuoteChar}
-        single_char = style["single_char"]
-        string = style["string"]
-        triple_quoted = style["triple_quoted"]
-
-        if (isinstance(single_char, str) and single_char
-                not in quote_chars) or (isinstance(single_char, QuoteChar)
-                                        and single_char not in quote_enums):
-            raise ValidationError(
-                f"style has invalid value for single_char quotes: {style}")
-
-        if (isinstance(string, str) and string not in quote_chars) or (
-                isinstance(string, QuoteChar) and string not in quote_enums):
-            raise ValidationError(
-                f"style has invalid values for string quotes: {style}")
-
-        if (isinstance(triple_quoted, str) and triple_quoted
-                not in quote_chars) or (isinstance(triple_quoted, QuoteChar)
-                                        and triple_quoted not in quote_enums):
-            raise ValidationError(
-                f"style has invalid values for string quotes: {style}")
-
-    @staticmethod
-    def from_dict(style: t.Dict[str, str]) -> "QuoteStyle":
+    @classmethod
+    def from_dict(cls, style: t.Dict[str, str]) -> "QuoteStyle":
         """Create a new QuoteStyle from given style dictionary.
 
         :param style: a quoting style dictionary that contains the
@@ -178,6 +208,7 @@ class QuoteStyle:
         :raises KeyError: if any of the keys are missing
         :raises ValueError: for invalid quote characters
         """
+        cls.validate(style)
         return QuoteStyle(
             single_char=QuoteChar(style["single_char"]),
             string=QuoteChar(style["string"]),
@@ -193,12 +224,13 @@ class QuoteStyle:
         }
 
     def __str__(self) -> str:
-        return f"single_char: {self.single_char}, string: {self.string}, "\
-               f"triple_quoted: {self.triple_quoted}"
+        return (f"single_char: {self.single_char.value}, "
+                f"string: {self.string.value}, "
+                f"triple_quoted: {self.triple_quoted.value}")
 
 
 # default styles
-Styles: t.Final[t.Dict[str, QuoteStyle]] = {
+STYLES: t.Final[t.Dict[str, QuoteStyle]] = {
     "black":
     QuoteStyle(
         single_char=QuoteChar.DOUBLE_QUOTE,
@@ -214,9 +246,16 @@ Styles: t.Final[t.Dict[str, QuoteStyle]] = {
 }
 
 
-def get_parser() -> argparse.ArgumentParser:
+def get_parser() -> argparse.ArgumentParser:  # pragma: no cover
     """initialize ArgumentParser instance"""
     parser = argparse.ArgumentParser(description="Requote")
+    parser.add_argument(
+        "-v",
+        "--version",
+        action="version",
+        help="print version and exit",
+        version=f"%(prog)s {__version__}",
+    )
     # input
     parser.add_argument(
         "files",
@@ -225,8 +264,8 @@ def get_parser() -> argparse.ArgumentParser:
                 from both stdin and files at the same time.
                 Default: reads from stdin""",
         type=str,
-        nargs='*',
-        default=['-'],
+        nargs="*",
+        default=["-"],
     )
     # output
     out = parser.add_mutually_exclusive_group()
@@ -247,14 +286,14 @@ def get_parser() -> argparse.ArgumentParser:
                 Can't be used with -i.
                 Default: write to stdout""",
         type=str,
-        default='-',
+        default="-",
     )
     # style
     style = parser.add_mutually_exclusive_group()
     style.add_argument(
         "-s",
         "--style",
-        choices=tuple(Styles.keys()),
+        choices=tuple(STYLES.keys()),
         default="black",
         help="""quoting style to use.
                 Can't be used with -c CONF.
@@ -274,19 +313,21 @@ def get_parser() -> argparse.ArgumentParser:
 
 
 def split_quotes(string: str) -> t.Tuple[str, str, str]:
-    """remove surrounding chars from a string"""
+    """Remove surrounding quote characters from a string."""
     stripped = string.strip()
-    # get first char, if string is quoted, to handle cases where the string
-    # is all quotes like '"', "'"
+
+    if not stripped:
+        return ("", string, "")  # Handle empty string case
+
     leader = stripped[0]
     supported_quotes = {i.value for i in QuoteChar}
 
     if leader not in supported_quotes:
-        return ('', string, '')
+        return ("", string, "")  # No quotes to remove
 
-    n_quotes = len(list(takewhile(lambda x: x == leader, string)))
+    n_quotes = len(stripped) - len(stripped.lstrip(leader))
     quotes = leader * n_quotes
-    return quotes, string[n_quotes:-n_quotes], quotes
+    return quotes, stripped[n_quotes:-n_quotes], quotes
 
 
 def quote_string(string: str, quote_char: QuoteChar, count: int = 1) -> str:
@@ -318,34 +359,49 @@ def requote_code(code: str, style: QuoteStyle) -> str:
         :return: requoted string if possible, otherwise return original string
         :rtype: str
         """
-        l_quote, string, r_quote = split_quotes(tok_val)
 
-        # triple quoted string, follows normal string rules
-        if len(l_quote) == 3:
-            requoted = quote_string(string, style.triple_quoted, 3)
+        # empty string
+        match split_quotes(tok_val):
+            case ("''", "", "''") | ('""', "", '""'):
+                requoted = quote_string("", style.single_char)
 
-        # empty string literal '' or ""
-        elif len(l_quote) == 2:
-            requoted = quote_string('', style.single_char, 1)
+            case ("''''''", "", "''''''") | ('""""""', "", '""""""'):
+                requoted = quote_string("", style.string, 3)
 
-        # single character string literal 'a' or "a"
-        elif (len(l_quote) == 1 and len(string) < 2
-              and style.single_char.value not in string):
-            requoted = quote_string(string, style.single_char, 1)
+            # normal string
+            case ("'", string, "'") | ('"', string, '"'):
+                # string is a single quote
+                if string == style.single_char.value:
+                    requoted = tok_val
 
-        # escaped single character string literal '\'a'
-        elif (len(l_quote) == 1 and len(string) == 2 and string[0] == '\\'
-              and style.single_char.value not in string):
-            requoted = quote_string(string, style.single_char, 1)
+                # single char
+                elif len(string) == 1:
+                    requoted = quote_string(string, style.single_char)
 
-        # other string literals like "abc"
-        elif len(l_quote) == 1 and len(
-                string) and style.string.value not in string:
-            requoted = quote_string(string, style.string, 1)
+                # contains unescaped style's string quote
+                elif string.count(style.string.value):
+                    requoted = tok_val
 
-        else:
-            # string doesn't need to be requoted
-            requoted = tok_val
+                else:
+                    requoted = quote_string(string, style.string)
+
+            # triple quoted
+            case ("'''", string, "'''") | ('"""', string, '"""'):
+                # string is a single quote chat
+                if string == style.triple_quoted.value:
+                    requoted = tok_val
+
+                elif string.startswith(style.triple_quoted.value):
+                    requoted = tok_val
+
+                elif string.endswith(style.triple_quoted.value):
+                    requoted = tok_val
+
+                else:
+                    requoted = quote_string(string, style.triple_quoted, 3)
+
+            case _:
+                requoted = tok_val
 
         return requoted
 
@@ -359,20 +415,23 @@ def requote_code(code: str, style: QuoteStyle) -> str:
                 new_tokens.append((tok_num, requoted, *_))
             else:
                 new_tokens.append((tok_num, tok_val, *_))
-    res: str | t.Any = tokenize.untokenize(new_tokens)
+
+    res = tokenize.untokenize(new_tokens)
 
     if isinstance(res, bytes):
         return res.decode("utf-8")
 
-    return res
+    return str(res)
 
 
 def json_loader(json_str: str) -> t.Dict[str, str]:
+    """load configuration from json string"""
     res: t.Dict[str, str] = dict(json.loads(json_str))
     return res
 
 
 def toml_loader(toml_str: str) -> t.Dict[str, str]:
+    """load configuration from toml string"""
     return tomllib.loads(toml_str)
 
 
@@ -383,7 +442,7 @@ def load_conf(conf_file: str) -> QuoteStyle:
 
     style_file: Path = Path(conf_file)
 
-    with open(style_file, 'r') as f:
+    with open(style_file, "r", encoding="utf-8") as f:
         conf: str = f.read()
 
     style_dict = loaders[style_file.suffix](conf)
@@ -397,39 +456,36 @@ def get_style(name: str, conf_file: str) -> QuoteStyle:
     passed to the function.
     """
     if name:
-        return Styles[name]
+        return STYLES[name]
 
     try:
         style: QuoteStyle = load_conf(conf_file)
 
-    except (ValidationError, KeyError):
+    except ValidationError:
         print(f"Invalid style in given conf file: {conf_file}",
               file=sys.stderr)
-        sys.exit(1)
-
-    except Exception:
-        print(f"Invalid style file: {conf_file}", file=sys.stderr)
         sys.exit(1)
 
     return style
 
 
 def main() -> None:
+    """Main entry point of requote CLI"""
     parser = get_parser()
     args = parser.parse_args()
     out = args.output
-    results = {}
+    results: t.Dict[str, t.List[str]] = {}
 
     # get style (builtin, custom)
     style: QuoteStyle = get_style(args.style, args.conf)
 
     # stdin
-    if '-' in args.files:
+    if "-" in args.files:
         code: str = sys.stdin.read()
         content: str = requote_code(code, style)
 
-        f_name: str = '-' if args.inplace else out
-        results[f_name] = content
+        f_name: str = "-" if args.inplace else out
+        results[f_name] = [content]
 
         args.files.clear()
 
@@ -448,28 +504,25 @@ def main() -> None:
                   file=sys.stderr)
             sys.exit(1)
 
-        with open(src_file) as src:
+        with open(src_file, "r", encoding="utf-8") as src:
             code = src.read()
 
         content = requote_code(code, style)
 
         if args.inplace:
-            results[f] = content
+            results[f] = [content]
 
         else:
-            results[out] = results.get(out, '') + '\n' + content
+            results[out] = results.get(out, [])
+            results[out].append(content)
 
     # write results
     for f, res in results.items():
-        if f == '-':
-            outfile = sys.stdout
+        if f == "-":
+            print(res)
         else:
-            outfile = open(f, 'w')
-
-        outfile.write(res)
-
-        if f != '-':
-            outfile.close()
+            with open(f, "w", encoding="utf-8") as outfile:
+                outfile.write("\n".join(res))
 
 
 if __name__ == "__main__":
